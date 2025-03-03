@@ -21,8 +21,8 @@ Desarrollaremos un chatbot utilizando FastAPI y un LLM, que servirá como ejempl
 El repositorio está organizado de la siguiente manera:
 
 - `/ejemplos`: Código de ejemplo de cada clase
-- `/documentacion`: Recursos y documentación adicional
-- `/proyecto-final`: Implementación del chatbot con FastAPI
+- `/recursos`: Recursos y documentación adicional
+- `/chatbot-fastapi`: Implementación del chatbot con FastAPI
 
 ## 🛠️ Requisitos Previos
 
