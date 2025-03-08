@@ -8,11 +8,11 @@ def root():
     return {"message": "Bienvenido a la API de Chat"}
 
 @app.post("/chat")
-def chat(message: str = Body(..., embed=True)):
+def chat(messages: list[str] = Body(..., embed=True)):
     """
     Endpoint para procesar mensajes de chat
     """
-    response = process_message(message)
+    response = process_message(messages)
     return {"response": response}
 
 if __name__ == "__main__":
