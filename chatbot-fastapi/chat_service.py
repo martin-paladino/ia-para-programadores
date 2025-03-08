@@ -4,7 +4,7 @@ from typing import Any, TypedDict, Dict, List
 from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel
 
-api_key = "AIzaSyAUOqT3Qhz7aNJPY9ybb5GA17xp9CXmQ6E"
+api_key = "TU_API_KEY_AQUI"
 
 # ================================
 # Configuración de los modelos
