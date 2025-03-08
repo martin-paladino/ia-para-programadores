@@ -1,6 +1,8 @@
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
-from typing import Any
+from typing import Any, TypedDict, Dict, List
+from langgraph.graph import StateGraph, START, END
+from pydantic import BaseModel
 
 api_key = "AIzaSyAUOqT3Qhz7aNJPY9ybb5GA17xp9CXmQ6E"
 
@@ -26,11 +28,17 @@ qa_model = init_chat_model(
     api_key=api_key
 )
 
+# Definir el estado usando una clase Pydantic en lugar de TypedDict
+class AgentsState(BaseModel):
+    query: Dict[str, Any]
+    decided_to_save: bool = False  # Valor predeterminado
+    chat_history: List[Dict[str, Any]] = []
+
 # ================================
 # Funciones de los agentes
 # ================================
 
-def decider_agent(ultimo_mensaje: any) -> str:
+def decider_agent(state: AgentsState):
 
     decider_messages = [
         SystemMessage(content="""
@@ -38,42 +46,52 @@ Vas a recibir un mensaje de un usuario.
 Debes decidir si el usuario esta pidiendo guardar info en la base de cononocimientos o está haciendo una pregunta.
 Si pide guardar info, debes responder solo con la palabra "SI", en caso contrario, debes responder con la palabra "NO".
 """),
-        HumanMessage(content=ultimo_mensaje["content"])
+        HumanMessage(content=state.query["content"])
     ]
 
     decider_response = decider_model.invoke(decider_messages)
 
-    return decider_response.content
+    state.decided_to_save = True if decider_response.content == "SI" else False
 
+    return state
 
-def saver_agent(ultimo_mensaje: any) -> str:
+def saver_agent(state: AgentsState):
 
     saver_messages = [
         SystemMessage(content="""
 Vas a recibir un mensaje de un usuario.
 Debes guardar la info en la base de cononocimientos.
 """),
-        HumanMessage(content=ultimo_mensaje["content"])
+        HumanMessage(content=state.query["content"])
     ]
 
     saver_response = saver_model.invoke(saver_messages)
 
-    return saver_response.content
+    state.chat_history.append({
+        "role": "assistant",
+        "content": saver_response.content
+    })
 
+    return state
 
-def qa_agent(ultimo_mensaje: any) -> str:
+def qa_agent(state: AgentsState):
 
     qa_messages = [
         SystemMessage(content="""
 Vas a recibir un mensaje de un usuario.
 Debes responder la pregunta del usuario basada en la infomracion extraida de la base de conocimientos.
 """),
-        HumanMessage(content=ultimo_mensaje["content"])
+        HumanMessage(content=state.query["content"])
     ]
 
     qa_response = qa_model.invoke(qa_messages)
 
-    return qa_response.content
+    state.chat_history.append({
+        "role": "assistant",
+        "content": qa_response.content
+    })
+
+    return state
 
 
 # ================================
@@ -92,6 +110,36 @@ def process_message(data: Any) -> str:
 
     ultimo_mensaje = data.get("messages", [])[-1]
 
-    qa_response = qa_agent(ultimo_mensaje)
+    agents_state = AgentsState(
+        query=ultimo_mensaje,
+        decided_to_save=False,
+        chat_history=[]
+    )
 
-    return qa_response
+    # Definir el grafo con el esquema de estado apropiado
+    graph = StateGraph(AgentsState)
+
+    graph.add_node("decider", decider_agent)
+    graph.add_node("saver", saver_agent)
+    graph.add_node("qa", qa_agent)
+
+
+    def decidir_que_agente_llamar(state: AgentsState) -> str:
+        if state.decided_to_save == True:
+            return "saver"
+        else:
+            return "qa"
+
+    graph.add_edge(START, "decider")
+    graph.add_conditional_edges(
+        "decider",
+        decidir_que_agente_llamar
+    )
+    graph.add_edge("saver", END)
+    graph.add_edge("qa", END)
+
+    compiled_graph = graph.compile()
+
+    response = compiled_graph.invoke(agents_state)
+
+    return response
