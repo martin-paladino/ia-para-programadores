@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv/
+.env/
+.env
+.env.local
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs y base de datos
+*.log
+*.sqlite3
+*.db
+
+# Archivos de caché
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Archivos específicos de FastAPI/Uvicorn
+.uvicorn.sock 
