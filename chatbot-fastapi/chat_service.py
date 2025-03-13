@@ -157,6 +157,54 @@ def qa_agent(state: AgentsState):
     return state
 
 
+# ===================================================================
+# GRAFO DE AGENTES
+# ===================================================================
+def create_agents_graph():
+    """
+    Crea el grafo de agentes para el chatbot.
+    """
+
+    # Inicializar el grafo con el esquema de estado o memoria de trabajo
+    # definido previamente
+    graph = StateGraph(AgentsState)
+
+    # Agregar los nodos (agentes) del grafo
+    graph.add_node("decider", decider_agent)
+    graph.add_node("saver", saver_agent)
+    graph.add_node("qa", qa_agent)
+
+    # Función para decidir qué agente llamará el decider agent
+    def decide_next_agent(state: AgentsState) -> str:
+        # Si el decider agent respondió "SI" y actualizó el estado de decided_to_save a True, 
+        # llama al saver agent. En caso contrario, llama al qa agent.
+        if state.decided_to_save == True:
+            return "saver"
+        else:
+            return "qa"
+
+    # Definir el nodo inicial del grafo
+    graph.add_edge(START, "decider")
+
+    # Definir las aristas/flechas (edges) del grafo
+    graph.add_conditional_edges(
+        "decider",
+        decide_next_agent
+    )
+
+    # Definir los nodos finales del grafo
+    graph.add_edge("saver", END)
+    graph.add_edge("qa", END)
+
+    # Compilar el grafo para que se pueda ejecutar
+    compiled_graph = graph.compile()
+
+    return compiled_graph
+
+# Se crea el grafo de agentes
+AGENTS_GRAPH = create_agents_graph()
+
+
 # ================================
 # Procesamiento de mensajes
 # ================================
@@ -179,46 +227,14 @@ def process_message(data: dict) -> dict:
     # Extrae el último mensaje del historial de mensajes
     last_message = data.get("messages", [])[-1]
 
+    # Inicializar el estado o memoria de trabajo
     agents_state = AgentsState(
         query=last_message,
         decided_to_save=False,
         chat_history=[]
     )
 
-    # Inicializar el grafo con el esquema de estado definido previamente
-    graph = StateGraph(AgentsState)
-
-    # Agregar los nodos (agentes) del grafo
-    graph.add_node("decider", decider_agent)
-    graph.add_node("saver", saver_agent)
-    graph.add_node("qa", qa_agent)
-
-    # Función para decidir qué agente llamará el decider agent
-    def decidir_que_agente_llamar(state: AgentsState) -> str:
-        # Si el decider agent respondió "SI" y actualizó el estado de decided_to_save a True, 
-        # llama al saver agent. En caso contrario, llama al qa agent.
-        if state.decided_to_save == True:
-            return "saver"
-        else:
-            return "qa"
-
-    # Definir el nodo inicial del grafo
-    graph.add_edge(START, "decider")
-
-    # Definir las aristas/flechas (edges) del grafo
-    graph.add_conditional_edges(
-        "decider",
-        decidir_que_agente_llamar
-    )
-
-    # Definir los nodos finales del grafo
-    graph.add_edge("saver", END)
-    graph.add_edge("qa", END)
-
-    # Compilar el grafo para que se pueda ejecutar
-    compiled_graph = graph.compile()
-
     # Ejecutar el grafo con el estado inicial
-    updated_state = compiled_graph.invoke(agents_state)
+    updated_state = AGENTS_GRAPH.invoke(agents_state)
 
     return updated_state
