@@ -2,9 +2,13 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_core.documents import Document
 from typing import Any
+import uuid
 
-api_key = "TU_API_KEY_AQUI"
+api_key = "AIzaSyAUOqT3Qhz7aNJPY9ybb5GA17xp9CXmQ6E"
 
 # ================================
 # Configuración de los modelos
@@ -37,6 +41,18 @@ qa_model = init_chat_model(
     api_key=api_key
 )
 
+# ================================
+# Configuración de la base de datos vectorial
+# ================================
+vector_database = None
+
+def get_vector_databse():
+    global vector_database
+    if vector_database is None:
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        vector_database = InMemoryVectorStore(embeddings)
+    return vector_database
+
 
 # ================================
 # Estado o memoria de trabajo de los agentes
@@ -56,6 +72,7 @@ class AgentsState(BaseModel):
     query: dict[str, Any]
     decided_to_save: bool
     chat_history: list[dict[str, Any]]
+    context: list[Document]
 
 
 # ================================
@@ -75,7 +92,7 @@ def decider_agent(state: AgentsState):
     Returns:
         El estado actualizado con la decisión del agente.
     """
-
+    print("entro al decider agent")
     decider_messages = [
         SystemMessage(content="""
             Vas a recibir un mensaje de un usuario.
@@ -89,7 +106,7 @@ def decider_agent(state: AgentsState):
 
     # Actualiza el estado con la decisión del agente
     state.decided_to_save = True if decider_response.content == "SI" else False
-
+    print("respuesta del decider agent: ", decider_response.content)
     return state
 
 
@@ -105,6 +122,17 @@ def saver_agent(state: AgentsState):
     Returns:
         El estado actualizado con la respuesta del agente.
     """
+    print("entro al saver agent")
+    
+    # Utilizamos la base de datos vectorial para guardar la información
+    vector_database = get_vector_databse()
+    document = Document(
+        page_content=state.query["content"],
+        metadata={"id": str(uuid.uuid4())},
+    )
+    print("documento a guardar: ", document)
+    documents = [document]
+    vector_database.add_documents(documents=documents)
 
     saver_messages = [
         SystemMessage(content="""
@@ -113,8 +141,8 @@ def saver_agent(state: AgentsState):
         """),
         HumanMessage(content=state.query["content"])
     ]
-
     saver_response = saver_model.invoke(saver_messages)
+    print("respuesta del saver agent: ", saver_response.content)
 
     # Actualiza el historial de la conversación con la respuesta del agente
     state.chat_history.append({
@@ -138,12 +166,19 @@ def qa_agent(state: AgentsState):
     Returns:
         El estado actualizado con la respuesta del agente.
     """
+    print("entro al qa agent")
+    vector_database = get_vector_databse()
+    docs = vector_database.similarity_search(state.query["content"], k=3)
+    state.context = docs
+    print("docs: ", docs)
+
     qa_messages = [
         SystemMessage(content="""
             Vas a recibir un mensaje de un usuario.
             Debes responder la pregunta del usuario basada en la infomracion extraida de la base de conocimientos.
         """),
-        HumanMessage(content=state.query["content"])
+        HumanMessage(content=state.query["content"]),
+        HumanMessage(content=f"Esta es la informacion relevante para responder: {state.context}")
     ]
 
     qa_response = qa_model.invoke(qa_messages)
@@ -154,6 +189,7 @@ def qa_agent(state: AgentsState):
         "content": qa_response.content
     })
 
+    print("respuesta del qa agent: ", qa_response.content)
     return state
 
 
@@ -231,7 +267,8 @@ def process_message(data: dict) -> dict:
     agents_state = AgentsState(
         query=last_message,
         decided_to_save=False,
-        chat_history=[]
+        chat_history=[],
+        context=[]
     )
 
     # Ejecutar el grafo con el estado inicial
