@@ -186,6 +186,7 @@ def qa_agent(state: AgentsState):
     # Obtiene la base de datos vectorial
     vector_database = get_vector_databse()
     # Busca documentos similares al mensaje del usuario
+    # el parametro k es el numero de documentos similares a recuperar
     docs = vector_database.similarity_search(state.query["content"], k=3)
     # Actualiza el estado con los documentos encontrados
     state.context = docs
@@ -197,6 +198,8 @@ def qa_agent(state: AgentsState):
             Debes responder la pregunta del usuario basada en la infomracion extraida de la base de conocimientos.
         """),
         HumanMessage(content=state.query["content"]),
+        # La información relevante que se encontró en la base de conocimientos
+        # se agrega como un mensaje adicional para que el modelo tenga en cuenta como contexto para la respuesta
         HumanMessage(content=f"Esta es la informacion relevante para responder: {state.context}")
     ]
 

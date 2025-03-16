@@ -13,6 +13,13 @@ El chatbot implementa un sistema de decisión inteligente que:
 
 La arquitectura utiliza LangGraph para definir un flujo de trabajo entre diferentes modelos de IA, donde cada uno tiene una responsabilidad específica dentro del sistema.
 
+## Características
+
+- **Interfaz Web Moderna**: Interfaz de usuario intuitiva y responsive para interactuar con el chatbot
+- **Sistema de Agentes Inteligentes**: Utiliza múltiples modelos de Google Gemini para diferentes tareas
+- **Almacenamiento Vectorial**: Guarda información en una base de datos vectorial para búsquedas semánticas
+- **Orquestación con LangGraph**: Flujo de trabajo flexible y estructurado entre agentes
+
 ## Requisitos
 
 - Python 3.9+
@@ -25,6 +32,8 @@ La arquitectura utiliza LangGraph para definir un flujo de trabajo entre diferen
 - Pydantic: Validación de datos
 - LangChain: Framework para trabajar con modelos de lenguaje
 - LangGraph: Orquestación de flujos de trabajo con LLMs
+- LangChain HuggingFace: Integración con modelos de embeddings de HuggingFace
+- LangChain Google Genai: Integración con modelos de Google Gemini
 
 ## Instalación
 
@@ -77,6 +86,15 @@ uvicorn main:app --reload --port 8001
 
 El servidor estará disponible en http://localhost:8001
 
+## Uso de la Interfaz Web
+
+Al acceder a http://localhost:8001 se cargará la interfaz web del chatbot donde podrás:
+
+1. Enviar mensajes al chatbot
+2. Guardar información (ej: "Guarda que la capital de Francia es París")
+3. Hacer preguntas sobre la información almacenada (ej: "¿Cuál es la capital de Francia?")
+4. Reiniciar la conversación con el botón correspondiente
+
 ## Uso del API
 
 ### Endpoint de chat
@@ -104,7 +122,20 @@ curl -X 'POST' \
 Ejemplo de respuesta:
 ```json
 {
-  "response": "He guardado la información: la capital de Francia es París."
+  "response": {
+    "query": {
+      "role": "user", 
+      "content": "Guarda que la capital de Francia es París"
+    },
+    "decided_to_save": true,
+    "chat_history": [
+      {
+        "role": "assistant", 
+        "content": "He guardado la información: la capital de Francia es París."
+      }
+    ],
+    "context": []
+  }
 }
 ```
 
@@ -120,10 +151,36 @@ El flujo de trabajo se define mediante un grafo dirigido que conecta estos agent
 
 ### Estructura de archivos
 
-- `main.py`: Define los endpoints de FastAPI
-- `chat_service.py`: Contiene la lógica de los agentes y el grafo de flujo de trabajo
-- `requirements.txt`: Lista de dependencias
+```
+chatbot-fastapi/
+├── app/
+│   ├── static/
+│   │   ├── index.html      # Página web principal
+│   │   ├── script.js       # Lógica del frontend
+│   │   └── styles.css      # Estilos CSS
+│   └── models/             # Modelos adicionales (si los hay)
+├── chat_service.py         # Lógica de los agentes y grafo de trabajo
+├── main.py                 # Endpoints de FastAPI
+└── requirements.txt        # Dependencias del proyecto
+```
 
+## Notas de implementación
+
+- **Frontend generado por IA**: La interfaz de usuario fue completamente generada por Cursor AI a partir de un prompt, demostrando el potencial de las herramientas de IA para el desarrollo rápido de interfaces.
+
+- **Enfoque en la IA**: Como parte de un curso educativo de IA para programadores, este proyecto se centra principalmente en la implementación de conceptos relacionados con la IA (agentes, orquestación, RAG) más que en aspectos de ingeniería de software robusta.
+
+- **Código educativo**: El código está diseñado para ser legible y comprensible, pero no incluye todas las prácticas recomendadas para entornos de producción (como manejo exhaustivo de errores con bloques try-except, validaciones completas, etc.).
+
+## Contribuciones
+
+Las mejoras a este proyecto son bienvenidas a través de pull requests. Algunas áreas que podrían beneficiarse de contribuciones incluyen:
+
+- Mejora del manejo de errores
+- Implementación de pruebas unitarias
+- Optimización del rendimiento de las búsquedas vectoriales
+- Mejoras en la interfaz de usuario
+- Adición de funcionalidades como exportación/importación de la base de conocimientos
 
 ## Contexto educativo
 
