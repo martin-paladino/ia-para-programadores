@@ -17,8 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content: WELCOME_MESSAGE
     }];
     
-    // Obtener nombre del usuario (en una aplicación real, esto vendría del backend)
-    const userName = "Martin"; // Valor hardcodeado para este ejemplo
+    const userName = "Usuario"; // Valor hardcodeado para este ejemplo
     
     // Configurar saludo personalizado
     setWelcomeMessage();

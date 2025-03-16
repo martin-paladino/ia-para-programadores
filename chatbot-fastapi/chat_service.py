@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 from typing import Any
 import uuid
 
-api_key = "AIzaSyAUOqT3Qhz7aNJPY9ybb5GA17xp9CXmQ6E"
+api_key = "TU_API_KEY_AQUI"
 
 # ================================
 # Configuración de los modelos
@@ -44,12 +44,27 @@ qa_model = init_chat_model(
 # ================================
 # Configuración de la base de datos vectorial
 # ================================
+
+# Variable global para almacenar la instancia de la base de datos vectorial
 vector_database = None
 
 def get_vector_databse():
+    """
+    Obtiene o inicializa la base de datos vectorial usando el patrón Singleton.
+    
+    Esta función garantiza que solo exista una instancia de la base de datos vectorial
+    en toda la aplicación. La primera vez que se llama, crea la instancia con el modelo
+    de embeddings especificado. Las llamadas posteriores retornan la misma instancia.
+    
+    Returns:
+        InMemoryVectorStore: Instancia de la base de datos vectorial en memoria
+        inicializada con embeddings de HuggingFace.
+    """
     global vector_database
     if vector_database is None:
+        # Inicializa el modelo de embeddings usando sentence-transformers
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+        # Crea la base de datos vectorial en memoria con los embeddings configurados
         vector_database = InMemoryVectorStore(embeddings)
     return vector_database
 
@@ -68,6 +83,7 @@ class AgentsState(BaseModel):
         query: El mensaje o consulta del usuario.
         decided_to_save: Indica si el usuario quiere guardar información.
         chat_history: Historial de la conversación.
+        context: Documentos recuperados de la base de conocimientos.
     """
     query: dict[str, Any]
     decided_to_save: bool
@@ -131,8 +147,8 @@ def saver_agent(state: AgentsState):
         metadata={"id": str(uuid.uuid4())},
     )
     print("documento a guardar: ", document)
-    documents = [document]
-    vector_database.add_documents(documents=documents)
+    # Agrega el documento a la base de datos vectorial
+    vector_database.add_documents(documents=[document])
 
     saver_messages = [
         SystemMessage(content="""
@@ -167,8 +183,11 @@ def qa_agent(state: AgentsState):
         El estado actualizado con la respuesta del agente.
     """
     print("entro al qa agent")
+    # Obtiene la base de datos vectorial
     vector_database = get_vector_databse()
+    # Busca documentos similares al mensaje del usuario
     docs = vector_database.similarity_search(state.query["content"], k=3)
+    # Actualiza el estado con los documentos encontrados
     state.context = docs
     print("docs: ", docs)
 
@@ -267,7 +286,7 @@ def process_message(data: dict) -> dict:
     agents_state = AgentsState(
         query=last_message,
         decided_to_save=False,
-        chat_history=[],
+        chat_history=data.get("messages", []),
         context=[]
     )
 
